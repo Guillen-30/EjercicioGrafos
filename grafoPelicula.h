@@ -91,6 +91,34 @@ public:
         return peso;
     }
 
+    int getNumNodos(){
+        return nodos.size();
+    }
+
+    bool isAdyacente(Pelicula* p1, Pelicula* p2){
+        int id1 = idNodo[p1->getTitulo()];
+        int id2 = idNodo[p2->getTitulo()];
+        for (const auto& relacion : relaciones[id1]) {
+            int vecino = relacion.first;
+            if (vecino == id2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hayArco(Pelicula* p1, Pelicula* p2){
+        int id1 = idNodo[p1->getTitulo()];
+        int id2 = idNodo[p2->getTitulo()];
+        for (const auto& relacion : relaciones[id1]) {
+            int vecino = relacion.first;
+            if (vecino == id2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::vector<Pelicula*> getVecinos(Pelicula* p){
         std::vector<Pelicula*> vecinos;
         int id = idNodo[p->getTitulo()];

@@ -151,20 +151,20 @@ int main() {
     grafo.agregarRelacion(SherlockHolmes, Shrek);
     grafo.agregarRelacion(Shrek, Grease);
 
-    //!Test componentes conexas
+    // //!Test componentes conexas
 
-    // Obtener componentes conexas y mostrarlas
-    std::vector<std::vector<Pelicula*>> componentesConexas = grafo.obtenerComponentesConexas();
+    // // Obtener componentes conexas y mostrarlas
+    // std::vector<std::vector<Pelicula*>> componentesConexas = grafo.obtenerComponentesConexas();
 
-    for (const auto& componente : componentesConexas) {
-        std::cout << "Componente Conexa:" << std::endl;
-        for (const Pelicula* pelicula : componente) {
-            pelicula->mostrarInformacion();
-        }
-        std::cout << std::endl;
-    }
+    // for (const auto& componente : componentesConexas) {
+    //     std::cout << "Componente Conexa:" << std::endl;
+    //     for (const Pelicula* pelicula : componente) {
+    //         pelicula->mostrarInformacion();
+    //     }
+    //     std::cout << std::endl;
+    // }
 
-    //!End test componentes conexas
+    // //!End test componentes conexas
 
     // //!Test getPathsByWarshall
     std::vector<Path*>* caminos = graphDiscover.getPathsByWarshall(Grease, Shrek, &grafo);

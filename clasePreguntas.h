@@ -5,6 +5,7 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <unordered_set>
 
 #include "grafoPelicula.h"
 
@@ -30,80 +31,97 @@ struct DistancePath
 class GraphDiscover
 {
 public:
-vector<Path *> *getPathsByWarshall(Pelicula *pOrigen, Pelicula *pDestino, GrafoPeliculas *pGrafo)
-{
-    vector<vector<DistancePath *>> distMatrix;
-    vector<Path *> *resultPaths = new vector<Path *>();
-
-    // Initialize the distance matrix
-    for (Pelicula *rowNode : pGrafo->getNodos())
+    vector<Path *> *getPathsByWarshall(Pelicula *pOrigen, Pelicula *pDestino, GrafoPeliculas *pGrafo)
     {
-        vector<DistancePath *> row;
-        for (Pelicula *colNode : pGrafo->getNodos())
-        {
-            DistancePath *distancePath = new DistancePath();
-            distancePath->keyNode = colNode;
-            row.push_back(distancePath);
-        }
-        distMatrix.push_back(row);
-    }
+        int numNodos = pGrafo->getNumNodos();
+        vector<vector<int>> dist(numNodos, vector<int>(numNodos, numeric_limits<int>::max()));
+        vector<vector<vector<Pelicula *>>> paths(numNodos, vector<vector<Pelicula *>>(numNodos));
 
-    // Fill in the distance matrix with direct edges' weights
-    for (Pelicula *node : pGrafo->getNodos())
-    {
-        for (Pelicula *neighbor : pGrafo->getVecinos(node))
+        // Initialize the distance matrix and paths matrix with direct connections
+        for (int i = 0; i < numNodos; ++i)
         {
-            int weight = pGrafo->getPesoArco(node, neighbor);
-            distMatrix[node->getId()][neighbor->getId()]->peso = weight;
-            distMatrix[node->getId()][neighbor->getId()]->LastNodo = node;
-        }
-    }
-
-    // Warshall's algorithm
-    for (Pelicula *k : pGrafo->getNodos())
-    {
-        for (Pelicula *i : pGrafo->getNodos())
-        {
-            for (Pelicula *j : pGrafo->getNodos())
+            for (int j = 0; j < numNodos; ++j)
             {
-                if (distMatrix[i->getId()][k->getId()]->peso + distMatrix[k->getId()][j->getId()]->peso <
-                    distMatrix[i->getId()][j->getId()]->peso)
+                if (i == j)
                 {
-                    distMatrix[i->getId()][j->getId()]->peso =
-                        distMatrix[i->getId()][k->getId()]->peso + distMatrix[k->getId()][j->getId()]->peso;
-                    distMatrix[i->getId()][j->getId()]->LastNodo = distMatrix[k->getId()][j->getId()]->LastNodo;
+                    dist[i][j] = 0;
+                }
+                else if (pGrafo->hayArco(pGrafo->getNodos()[i], pGrafo->getNodos()[j]))
+                {
+                    dist[i][j] = pGrafo->getPesoArco(pGrafo->getNodos()[i], pGrafo->getNodos()[j]);
+                    paths[i][j] = {pGrafo->getNodos()[i], pGrafo->getNodos()[j]};
                 }
             }
         }
-    }
 
-    // Extract paths from the distance matrix
-    for (Pelicula *startNode : pGrafo->getNodos())
-    {
-        for (Pelicula *endNode : pGrafo->getNodos())
+        // Warshall's algorithm
+        for (int k = 0; k < numNodos; ++k)
         {
-            if (startNode != endNode && startNode == pOrigen && endNode == pDestino &&
-                distMatrix[startNode->getId()][endNode->getId()]->peso != numeric_limits<int>::max())
+            for (int i = 0; i < numNodos; ++i)
             {
-                Path *path = new Path();
-                path->origen = startNode;
-                path->destino = endNode;
-                path->peso = distMatrix[startNode->getId()][endNode->getId()]->peso;
-
-                Pelicula *currentNode = endNode;
-                while (currentNode != nullptr && currentNode != startNode)
+                for (int j = 0; j < numNodos; ++j)
                 {
-                    path->path.insert(path->path.begin(), currentNode);
-                    currentNode = distMatrix[startNode->getId()][currentNode->getId()]->LastNodo;
+                    if (dist[i][k] != numeric_limits<int>::max() && dist[k][j] != numeric_limits<int>::max() &&
+                        dist[i][k] + dist[k][j] < dist[i][j])
+                    {
+                        dist[i][j] = dist[i][k] + dist[k][j];
+                        paths[i][j] = paths[i][k];
+                        paths[i][j].insert(paths[i][j].end(), paths[k][j].begin() + 1, paths[k][j].end());
+                    }
                 }
-
-                resultPaths->push_back(path);
             }
         }
+
+        // Extract paths from the paths matrix
+        vector<Path *> *allPaths = new vector<Path *>();
+        for (int i = 0; i < numNodos; ++i)
+        {
+            for (int j = 0; j < numNodos; ++j)
+            {
+                if (i != j && dist[i][j] != numeric_limits<int>::max())
+                {
+                    Path *path = new Path();
+                    path->origen = paths[i][j].front();
+                    path->destino = paths[i][j].back();
+                    path->peso = dist[i][j];
+                    path->path = paths[i][j];
+                    allPaths->push_back(path);
+                }
+            }
+        }
+
+        //Filter paths by nodes
+        vector<Path *> *filteredPaths = new vector<Path *>();
+        for (Path *path : *allPaths)
+        {
+            if (path->origen == pOrigen && path->destino == pDestino)
+            {
+                filteredPaths->push_back(path);
+            }
+        }
+
+        return filteredPaths;
     }
 
-    return resultPaths;
-}
+//The result should be a vector of paths with information kind of like this:
+//1
+// "Grease"->"The Hangover"->"Indiana Jones"->"The Matrix"->"The Hobbit"->"Toy Story"->"Shrek"
+// 2
+// "Grease"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Hobbit"->"Toy Story"->"Pirates of the Caribbean"->"Sherlock Holmes"->"Shrek"
+// 3
+// "Grease"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Hobbit"->"Toy Story"->"Shrek"
+// 4
+// "Grease"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Matrix"->"The Hobbit"->"Toy Story"->"Pirates of the Caribbean"->"Sherlock Holmes"->"Shrek"
+// 5
+// "Grease"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Matrix"->"The Hobbit"->"Toy Story"->"Shrek"
+// 6
+// "Grease"->"La La Land"->"The Godfather"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Hobbit"->"Toy Story"->"Pirates of the Caribbean"->"Sherlock Holmes"->"Shrek"
+// 7
+// "Grease"->"La La Land"->"The Godfather"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Hobbit"->"Toy Story"->"Shrek"
+// 8
+// "Grease"->"La La Land"->"The Godfather"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Matrix"->"The Hobbit"->"Toy Story"->"Pirates of the Caribbean"->"Sherlock Holmes"->"Shrek"
+// 9
+// "Grease"->"La La Land"->"The Godfather"->"Forrest Gump"->"Grease"->"The Hangover"->"Indiana Jones"->"The Matrix"->"The Hobbit"->"Toy Story"->"Shrek"
 
     Path *getShortestPath(Pelicula *pOrigen, Pelicula *pDestino, GrafoPeliculas *pGrafo)
     {
